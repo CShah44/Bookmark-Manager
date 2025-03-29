@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { useEffect, useState } from "react";
+import { SignedIn, SignedOut, useAuth, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Tags, FolderPlus } from "lucide-react";
+import { Search, Plus, Tags, FolderPlus, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -21,9 +21,21 @@ import ManageTagsModal from "@/components/shared/ManageTagsModal";
 import Link from "next/link";
 import { Bookmark } from "@/lib/types";
 import { toast } from "sonner";
-import { createBookmark, deleteBookmark } from "@/actions/bookmarkActions";
-import { createFolder, deleteFolderFromName } from "@/actions/folderActions";
-import { createTag, deleteTagFromName } from "@/actions/tagActions";
+import {
+  createBookmark,
+  deleteBookmark,
+  getUserBookmarks,
+} from "@/actions/bookmarkActions";
+import {
+  createFolder,
+  deleteFolderFromName,
+  getUserFolders,
+} from "@/actions/folderActions";
+import {
+  createTag,
+  deleteTagFromName,
+  getUserTags,
+} from "@/actions/tagActions";
 
 export default function Home() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -36,6 +48,33 @@ export default function Home() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFoldersModalOpen, setIsFoldersModalOpen] = useState(false);
   const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { isSignedIn } = useAuth();
+
+  // Fetch bookmarks, folders, and tags from the server
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const bookmarks = await getUserBookmarks();
+        const folders = await getUserFolders();
+        const tags = await getUserTags();
+
+        setBookmarks(bookmarks);
+        setFolders(folders.map((folder) => folder.name));
+        setTags(tags.map((tag) => tag.name));
+
+        setLoading(false);
+      } catch (error) {
+        toast.error("Error fetching data" + error);
+      }
+    };
+
+    if (!isSignedIn) {
+      setLoading(false);
+    }
+
+    fetchData();
+  }, [isSignedIn]);
 
   // Filter bookmarks based on search, folder, and tag
   const filteredBookmarks = bookmarks.filter((bookmark) => {
@@ -323,6 +362,10 @@ export default function Home() {
                 />
               ))}
             </div>
+          ) : loading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="animate-spin h-6 w-6 text-primary" />
+            </div>
           ) : (
             <div className="text-center py-10">
               <p className="text-muted-foreground">No bookmarks found</p>
@@ -337,6 +380,7 @@ export default function Home() {
       {/* Modals */}
       <AddBookmarkModal
         isOpen={isAddModalOpen}
+        folders={folders || []}
         onClose={() => setIsAddModalOpen(false)}
         onSave={handleAddBookmark}
       />

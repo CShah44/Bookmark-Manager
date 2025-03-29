@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Clipboard, Edit, Trash2 } from "lucide-react";
+import { MoreVertical, Clipboard, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,14 +46,11 @@ export default function BookmarkCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
+                  className="cursor-pointer"
                   onClick={() => navigator.clipboard.writeText(bookmark.url)}
                 >
                   <Clipboard className="mr-2 h-4 w-4" />
                   <span>Copy URL</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Edit className="mr-2 h-4 w-4" />
-                  <span>Edit</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={onDelete}

@@ -19,6 +19,7 @@ import {
 
 interface AddBookmarkModalProps {
   isOpen: boolean;
+  folders: string[] | [];
   onClose: () => void;
   onSave: (bookmark: {
     title: string;
@@ -31,6 +32,7 @@ interface AddBookmarkModalProps {
 
 export default function AddBookmarkModal({
   isOpen,
+  folders,
   onClose,
   onSave,
 }: AddBookmarkModalProps) {
@@ -121,9 +123,11 @@ export default function AddBookmarkModal({
                 <SelectValue placeholder="Select a folder" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Work">Work</SelectItem>
-                <SelectItem value="Personal">Personal</SelectItem>
-                <SelectItem value="Learning">Learning</SelectItem>
+                {folders.map((folder, id) => (
+                  <SelectItem key={id} value={folder}>
+                    {folder}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
