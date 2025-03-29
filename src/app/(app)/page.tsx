@@ -49,7 +49,7 @@ export default function Home() {
   const [isFoldersModalOpen, setIsFoldersModalOpen] = useState(false);
   const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
 
   // Fetch bookmarks, folders, and tags from the server
   useEffect(() => {
@@ -69,12 +69,8 @@ export default function Home() {
       }
     };
 
-    if (!isSignedIn) {
-      setLoading(false);
-    }
-
-    fetchData();
-  }, [isSignedIn]);
+    if (isLoaded && isSignedIn) fetchData();
+  }, [isSignedIn, isLoaded]);
 
   // Filter bookmarks based on search, folder, and tag
   const filteredBookmarks = bookmarks.filter((bookmark) => {
@@ -113,16 +109,23 @@ export default function Home() {
     tags: string[];
   }) => {
     try {
-      const b = await createBookmark({
-        title: newBookmark.title,
-        url: newBookmark.url,
-        description: newBookmark.description,
-        folder: newBookmark.folder,
-        tags: newBookmark.tags,
-      });
-
-      toast("Bookmark added successfully");
-      setBookmarks([b, ...bookmarks]);
+      toast.promise(
+        () =>
+          createBookmark({
+            title: newBookmark.title,
+            url: newBookmark.url,
+            description: newBookmark.description,
+            folder: newBookmark.folder,
+            tags: newBookmark.tags,
+          }).then((b) => {
+            setBookmarks([b, ...bookmarks]);
+          }),
+        {
+          loading: "Adding bookmark...",
+          success: "Bookmark added successfully",
+          error: "Error adding bookmark",
+        }
+      );
     } catch (error) {
       toast.error("Error adding bookmark" + error);
     }
@@ -163,12 +166,17 @@ export default function Home() {
     if (!folders.includes(name)) {
       // add new folder to database
       try {
-        await createFolder({
-          name,
-        });
-
-        toast("Folder added successfully");
-        setFolders([...folders, name]);
+        toast.promise(
+          () =>
+            createFolder({
+              name,
+            }).then(() => setFolders([...folders, name])),
+          {
+            loading: "Adding folder...",
+            success: "Folder added successfully",
+            error: "Error adding folder",
+          }
+        );
       } catch (error) {
         toast.error("Error adding folder" + error);
       }
@@ -176,17 +184,25 @@ export default function Home() {
   };
 
   const handleDeleteFolder = async (name: string) => {
-    setFolders(folders.filter((folder) => folder !== name));
-
     // Delete this folder from database
     try {
-      await deleteFolderFromName(name);
-
-      toast("Folder deleted successfully");
-      setBookmarks(
-        bookmarks.map((bookmark) =>
-          bookmark.folder === name ? { ...bookmark, folder: "" } : bookmark
-        )
+      toast.promise(
+        () =>
+          deleteFolderFromName(name).then(() => {
+            setFolders(folders.filter((folder) => folder !== name));
+            setBookmarks(
+              bookmarks.map((bookmark) =>
+                bookmark.folder === name
+                  ? { ...bookmark, folder: "" }
+                  : bookmark
+              )
+            );
+          }),
+        {
+          loading: "Deleting folder...",
+          success: "Folder deleted successfully",
+          error: "Error deleting folder",
+        }
       );
     } catch (error) {
       toast.error("Error deleting folder" + error);
@@ -197,11 +213,18 @@ export default function Home() {
     if (!tags.includes(name)) {
       // add new tag to database
       try {
-        await createTag({
-          name,
-        });
+        toast.promise(
+          () =>
+            createTag({
+              name,
+            }),
+          {
+            loading: "Adding tag...",
+            success: "Tag added successfully",
+            error: "Error adding tag",
+          }
+        );
 
-        toast("Tag added successfully");
         setTags([...tags, name]);
       } catch (error) {
         toast.error("Error adding tag" + error);
@@ -214,14 +237,21 @@ export default function Home() {
 
     // Delete this tag from database
     try {
-      await deleteTagFromName(name);
-
-      toast("Tag deleted successfully");
-      setBookmarks(
-        bookmarks.map((bookmark) => ({
-          ...bookmark,
-          tags: bookmark?.tags?.filter((tag) => tag.tag !== name),
-        }))
+      toast.promise(
+        () =>
+          deleteTagFromName(name).then(() => {
+            setBookmarks(
+              bookmarks.map((bookmark) => ({
+                ...bookmark,
+                tags: bookmark?.tags?.filter((tag) => tag.tag !== name),
+              }))
+            );
+          }),
+        {
+          loading: "Deleting tag...",
+          success: "Tag deleted successfully",
+          error: "Error deleting tag",
+        }
       );
     } catch (error) {
       toast.error("Error deleting tag" + error);
@@ -231,10 +261,17 @@ export default function Home() {
   const handleDeleteBookmark = async (id: string) => {
     // Delete bookmark from database
     try {
-      await deleteBookmark(id);
-
-      toast("Bookmark deleted successfully");
-      setBookmarks(bookmarks.filter((bookmark) => bookmark.id !== id));
+      toast.promise(
+        () =>
+          deleteBookmark(id).then(() => {
+            setBookmarks(bookmarks.filter((bookmark) => bookmark.id !== id));
+          }),
+        {
+          loading: "Deleting bookmark...",
+          success: "Bookmark deleted successfully",
+          error: "Error deleting bookmark",
+        }
+      );
     } catch (error) {
       toast.error("Error deleting bookmark" + error);
     }
@@ -364,7 +401,12 @@ export default function Home() {
         </SignedOut>
 
         <SignedIn>
-          {sortedBookmarks.length > 0 ? (
+          {(!isLoaded || loading) && (
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="animate-spin h-10 w-10 text-primary" />
+            </div>
+          )}
+          {isSignedIn && isLoaded && !loading && sortedBookmarks.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedBookmarks.map((bookmark) => (
                 <BookmarkCard
@@ -375,18 +417,21 @@ export default function Home() {
                 />
               ))}
             </div>
-          ) : loading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="animate-spin h-6 w-6 text-primary" />
-            </div>
-          ) : (
-            <div className="text-center py-10">
-              <p className="text-muted-foreground">No bookmarks found</p>
-              <Button className="mt-4" onClick={() => setIsAddModalOpen(true)}>
-                Add Your First Bookmark
-              </Button>
-            </div>
-          )}
+          )}{" "}
+          {isSignedIn &&
+            isLoaded &&
+            !loading &&
+            sortedBookmarks.length === 0 && (
+              <div className="text-center py-10">
+                <p className="text-muted-foreground">No bookmarks found</p>
+                <Button
+                  className="mt-4"
+                  onClick={() => setIsAddModalOpen(true)}
+                >
+                  Add Your First Bookmark
+                </Button>
+              </div>
+            )}
         </SignedIn>
       </main>
 

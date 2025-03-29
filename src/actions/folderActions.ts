@@ -61,6 +61,19 @@ export const deleteFolderFromName = async (name: string) => {
   }
 
   try {
+    // delete all the bookmarks within the folder
+    await payload.update({
+      collection: "bookmarks",
+      data: {
+        folder: "",
+      },
+      where: {
+        folder: {
+          equals: name,
+        },
+      },
+    });
+
     await payload.delete({
       collection: "folders",
       where: {
