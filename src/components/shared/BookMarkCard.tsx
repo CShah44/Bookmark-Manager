@@ -1,5 +1,3 @@
-"use client";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MoreVertical, Clipboard, Edit, Trash2 } from "lucide-react";
@@ -10,17 +8,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Bookmark } from "@/lib/types";
 
 interface BookmarkCardProps {
-  bookmark: {
-    id: string;
-    title: string;
-    url: string;
-    description: string;
-    favicon: string;
-    tags: string[];
-    folder: string;
-  };
+  bookmark: Bookmark;
   onDelete: () => void;
   onTagClick: (tag: string) => void;
 }
@@ -82,16 +73,17 @@ export default function BookmarkCard({
 
         <div className="mt-3 flex items-center justify-between">
           <div className="flex flex-wrap gap-1">
-            {bookmark.tags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="cursor-pointer hover:bg-secondary/80"
-                onClick={() => onTagClick(tag)}
-              >
-                {tag}
-              </Badge>
-            ))}
+            {bookmark.tags &&
+              bookmark.tags.map((tag) => (
+                <Badge
+                  key={tag.id}
+                  variant="secondary"
+                  className="cursor-pointer hover:bg-secondary/80"
+                  onClick={() => onTagClick(tag.tag || "")}
+                >
+                  {tag.tag}
+                </Badge>
+              ))}
           </div>
           {bookmark.folder && (
             <span className="text-xs text-muted-foreground">

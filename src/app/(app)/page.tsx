@@ -19,78 +19,16 @@ import AddBookmarkModal from "@/components/shared/AddBookmarkModal";
 import ManageFoldersModal from "@/components/shared/ManageFoldersModal";
 import ManageTagsModal from "@/components/shared/ManageTagsModal";
 import Link from "next/link";
-
-// Sample data
-const initialBookmarks = [
-  {
-    id: "1",
-    title: "Next.js Documentation",
-    url: "https://nextjs.org/docs",
-    description: "Learn about Next.js features and API.",
-    favicon: "https://nextjs.org/favicon.ico",
-    tags: ["development", "react"],
-    folder: "Learning",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    title: "Tailwind CSS",
-    url: "https://tailwindcss.com",
-    description: "A utility-first CSS framework for rapid UI development.",
-    favicon: "https://tailwindcss.com/favicon.ico",
-    tags: ["design", "development"],
-    folder: "Work",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    title: "Clerk Authentication",
-    url: "https://clerk.com",
-    description: "Complete user management for your applications.",
-    favicon: "https://clerk.com/favicon.ico",
-    tags: ["development", "auth"],
-    folder: "Work",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "4",
-    title: "Notion",
-    url: "https://notion.so",
-    description: "All-in-one workspace for notes, tasks, wikis, and databases.",
-    favicon: "https://notion.so/favicon.ico",
-    tags: ["productivity"],
-    folder: "Personal",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "5",
-    title: "GitHub",
-    url: "https://github.com",
-    description: "Where the world builds software.",
-    favicon: "https://github.com/favicon.ico",
-    tags: ["development"],
-    folder: "Work",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "6",
-    title: "Figma",
-    url: "https://figma.com",
-    description: "Collaborative interface design tool.",
-    favicon: "https://figma.com/favicon.ico",
-    tags: ["design"],
-    folder: "Work",
-    createdAt: new Date().toISOString(),
-  },
-];
-
-const initialFolders = ["Work", "Personal", "Learning"];
-const initialTags = ["development", "design", "productivity", "react", "auth"];
+import { Bookmark } from "@/lib/types";
+import { toast } from "sonner";
+import { createBookmark, deleteBookmark } from "@/actions/bookmarkActions";
+import { createFolder, deleteFolderFromName } from "@/actions/folderActions";
+import { createTag, deleteTagFromName } from "@/actions/tagActions";
 
 export default function Home() {
-  const [bookmarks, setBookmarks] = useState(initialBookmarks);
-  const [folders, setFolders] = useState(initialFolders);
-  const [tags, setTags] = useState(initialTags);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [folders, setFolders] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFolder, setSelectedFolder] = useState("All Folders");
   const [sortBy, setSortBy] = useState("Date Added");
@@ -104,13 +42,16 @@ export default function Home() {
     const matchesSearch =
       searchQuery === "" ||
       bookmark.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bookmark.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bookmark?.description
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
       bookmark.url.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesFolder =
       selectedFolder === "All Folders" || bookmark.folder === selectedFolder;
 
-    const matchesTag = !selectedTag || bookmark.tags.includes(selectedTag);
+    const matchesTag =
+      !selectedTag || bookmark?.tags?.some((tag) => tag.tag === selectedTag);
 
     return matchesSearch && matchesFolder && matchesTag;
   });
@@ -125,24 +66,38 @@ export default function Home() {
     return 0;
   });
 
-  const handleAddBookmark = (newBookmark: {
+  const handleAddBookmark = async (newBookmark: {
     title: string;
     url: string;
     description: string;
     folder: string;
     tags: string[];
   }) => {
-    const bookmarkWithId = {
-      ...newBookmark,
-      id: Date.now().toString(),
-      favicon: `https://${new URL(newBookmark.url).hostname}/favicon.ico`,
-      createdAt: new Date().toISOString(),
-    };
-    setBookmarks([bookmarkWithId, ...bookmarks]);
+    try {
+      const b = await createBookmark({
+        title: newBookmark.title,
+        url: newBookmark.url,
+        description: newBookmark.description,
+        folder: newBookmark.folder,
+        tags: newBookmark.tags,
+      });
+
+      setBookmarks([b, ...bookmarks]);
+    } catch (error) {
+      toast.error("Error adding bookmark" + error);
+    }
 
     // Add new folder if it doesn't exist
     if (newBookmark.folder && !folders.includes(newBookmark.folder)) {
-      setFolders([...folders, newBookmark.folder]);
+      // add new folder to database
+      try {
+        await createFolder({
+          name: newBookmark.folder,
+        });
+        setFolders([...folders, newBookmark.folder]);
+      } catch (error) {
+        toast.error("Error adding folder" + error);
+      }
     }
 
     // Add new tags if they don't exist
@@ -150,45 +105,89 @@ export default function Home() {
       (tag: string) => !tags.includes(tag)
     );
     if (newTags.length > 0) {
-      setTags([...tags, ...newTags]);
+      // add new tags to database
+      try {
+        for (const tag of newTags) {
+          await createTag({
+            name: tag,
+          });
+        }
+        setTags([...tags, ...newTags]);
+      } catch (error) {
+        toast.error("Error adding tag" + error);
+      }
     }
   };
 
-  const handleAddFolder = (name: string) => {
+  const handleAddFolder = async (name: string) => {
     if (!folders.includes(name)) {
-      setFolders([...folders, name]);
+      // add new folder to database
+      try {
+        await createFolder({
+          name,
+        });
+        setFolders([...folders, name]);
+      } catch (error) {
+        toast.error("Error adding folder" + error);
+      }
     }
   };
 
-  const handleDeleteFolder = (name: string) => {
+  const handleDeleteFolder = async (name: string) => {
     setFolders(folders.filter((folder) => folder !== name));
-    // Update bookmarks in this folder to have no folder
-    setBookmarks(
-      bookmarks.map((bookmark) =>
-        bookmark.folder === name ? { ...bookmark, folder: "" } : bookmark
-      )
-    );
-  };
 
-  const handleAddTag = (name: string) => {
-    if (!tags.includes(name)) {
-      setTags([...tags, name]);
+    // Delete this folder from database
+    try {
+      await deleteFolderFromName(name);
+      setBookmarks(
+        bookmarks.map((bookmark) =>
+          bookmark.folder === name ? { ...bookmark, folder: "" } : bookmark
+        )
+      );
+    } catch (error) {
+      toast.error("Error deleting folder" + error);
     }
   };
 
-  const handleDeleteTag = (name: string) => {
-    setTags(tags.filter((tag) => tag !== name));
-    // Remove this tag from all bookmarks
-    setBookmarks(
-      bookmarks.map((bookmark) => ({
-        ...bookmark,
-        tags: bookmark.tags.filter((tag) => tag !== name),
-      }))
-    );
+  const handleAddTag = async (name: string) => {
+    if (!tags.includes(name)) {
+      // add new tag to database
+      try {
+        await createTag({
+          name,
+        });
+        setTags([...tags, name]);
+      } catch (error) {
+        toast.error("Error adding tag" + error);
+      }
+    }
   };
 
-  const handleDeleteBookmark = (id: string) => {
-    setBookmarks(bookmarks.filter((bookmark) => bookmark.id !== id));
+  const handleDeleteTag = async (name: string) => {
+    setTags(tags.filter((tag) => tag !== name));
+
+    // Delete this tag from database
+    try {
+      await deleteTagFromName(name);
+      setBookmarks(
+        bookmarks.map((bookmark) => ({
+          ...bookmark,
+          tags: bookmark?.tags?.filter((tag) => tag.tag !== name),
+        }))
+      );
+    } catch (error) {
+      toast.error("Error deleting tag" + error);
+    }
+  };
+
+  const handleDeleteBookmark = async (id: string) => {
+    // Delete bookmark from database
+    try {
+      await deleteBookmark(id);
+      setBookmarks(bookmarks.filter((bookmark) => bookmark.id !== id));
+    } catch (error) {
+      toast.error("Error deleting bookmark" + error);
+    }
   };
 
   const handleTagSelect = (tag: string) => {
