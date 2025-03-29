@@ -121,6 +121,7 @@ export default function Home() {
         tags: newBookmark.tags,
       });
 
+      toast("Bookmark added successfully");
       setBookmarks([b, ...bookmarks]);
     } catch (error) {
       toast.error("Error adding bookmark" + error);
@@ -165,6 +166,8 @@ export default function Home() {
         await createFolder({
           name,
         });
+
+        toast("Folder added successfully");
         setFolders([...folders, name]);
       } catch (error) {
         toast.error("Error adding folder" + error);
@@ -178,6 +181,8 @@ export default function Home() {
     // Delete this folder from database
     try {
       await deleteFolderFromName(name);
+
+      toast("Folder deleted successfully");
       setBookmarks(
         bookmarks.map((bookmark) =>
           bookmark.folder === name ? { ...bookmark, folder: "" } : bookmark
@@ -195,6 +200,8 @@ export default function Home() {
         await createTag({
           name,
         });
+
+        toast("Tag added successfully");
         setTags([...tags, name]);
       } catch (error) {
         toast.error("Error adding tag" + error);
@@ -208,6 +215,8 @@ export default function Home() {
     // Delete this tag from database
     try {
       await deleteTagFromName(name);
+
+      toast("Tag deleted successfully");
       setBookmarks(
         bookmarks.map((bookmark) => ({
           ...bookmark,
@@ -223,6 +232,8 @@ export default function Home() {
     // Delete bookmark from database
     try {
       await deleteBookmark(id);
+
+      toast("Bookmark deleted successfully");
       setBookmarks(bookmarks.filter((bookmark) => bookmark.id !== id));
     } catch (error) {
       toast.error("Error deleting bookmark" + error);
@@ -238,7 +249,9 @@ export default function Home() {
       <header className="sticky top-0 z-10 border-b bg-background">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
-            <div className="text-xl font-semibold">Bookmark Manager</div>
+            <div className="text-xl font-light">
+              <span className="font-bold">BloomBook</span>: Bookmark Manager
+            </div>
             <div className="flex items-center gap-2">
               <ModeToggle />
               <SignedIn>
